@@ -1,3 +1,16 @@
+# Cached data files for this project
+features.txt
+activity_labels.txt
+y_train.txt
+y_test.txt
+subject_train.txt
+subject_test.txt
+X_train.txt
+X_test.txt
+
+# Vim files:
+*.sw?
+
 # History files
 .Rhistory
 .Rapp.history
