@@ -1,4 +1,6 @@
 # Cached data files for this project
+UCI HAR Dataset.zip
+date_downloaded.txt
 features.txt
 activity_labels.txt
 y_train.txt
