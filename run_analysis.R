@@ -133,3 +133,10 @@ tst_data <- cachedTable(tst_data_fnm, tst_data_pth, raw_pth, measured_vars)
 #  sub(pattern = "Mag", replacement = "magnitude") %>%
 #  sub(pattern = "std", replacement = "stddev")
 
+
+## Extract only the "measurements on the mean and standard deviation of each
+## measurement", which I take to mean "estimates of the mean and standard
+## deviation for each signal".
+tst_data <- select(tst_data, contains("mean"), contains("std"), -contains("angle"), -contains("freq"))
+trn_data <- select(trn_data, contains("mean"), contains("std"), -contains("angle"), -contains("freq"))
+
