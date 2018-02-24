@@ -122,21 +122,31 @@ tst_acts <- cachedTable(tst_acts_fnm, tst_acts_pth, raw_pth, join_col)
 tst_sbjs <- cachedTable(tst_sbjs_fnm, tst_sbjs_pth, raw_pth, sbjs_col)
 tst_data <- cachedTable(tst_data_fnm, tst_data_pth, raw_pth, measured_vars)
 
-#measured_vars <-
-#  measured_vars %>%
-#  sub(pattern = "^t", replacement = "timedomain") %>%
-#  sub(pattern = "^f", replacement = "frequencydomain") %>%
-#  sub(pattern = "AccJerk", replacement = "linearjerk") %>%
-#  sub(pattern = "GyroJerk", replacement = "angularjerk") %>%
-#  sub(pattern = "Acc", replacement = "linearacceleration") %>%
-#  sub(pattern = "Gyro", replacement = "angularvelocity") %>%
-#  sub(pattern = "Mag", replacement = "magnitude") %>%
-#  sub(pattern = "std", replacement = "stddev")
-
-
 ## Extract only the "measurements on the mean and standard deviation of each
 ## measurement", which I take to mean "estimates of the mean and standard
 ## deviation for each signal".
 tst_data <- select(tst_data, contains("mean"), contains("std"), -contains("angle"), -contains("freq"))
 trn_data <- select(trn_data, contains("mean"), contains("std"), -contains("angle"), -contains("freq"))
 
+## Rename variables according to the following rules:
+## - Variable names should:
+##   - Be lowercase if possible.
+##   - Be descriptive ("diagnosis" vs "dx")
+##   - Not be duplicated
+##   - Not contain underscores, dots, or whitespace
+original_vars <- names(tst_data)
+cleaned_vars <-
+  names(tst_data) %>%
+  sub(pattern = "^t", replacement = "timedomain") %>%
+  sub(pattern = "^f", replacement = "frequencydomain") %>%
+  gsub(pattern = "AccJerk", replacement = "linearjerk") %>%
+  gsub(pattern = "GyroJerk", replacement = "angularjerk") %>%
+  gsub(pattern = "Acc", replacement = "linearacceleration") %>%
+  gsub(pattern = "Gyro", replacement = "angularvelocity") %>%
+  gsub(pattern = "Mag", replacement = "magnitude") %>%
+  gsub(pattern = "std", replacement = "standarddeviation") %>%
+  gsub(pattern = "\\.", replacement = "") %>%
+  tolower
+
+names(tst_data) <- cleaned_vars
+names(trn_data) <- cleaned_vars
