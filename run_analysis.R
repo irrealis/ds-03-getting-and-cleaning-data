@@ -1,5 +1,4 @@
 ## Required libraries.
-#library(data.table)
 library(tidyr)
 
 ## Names of cache files. Reason: these will contain data extracted from zip
@@ -44,13 +43,16 @@ tst_sbjs_pth <- file.path(tst_pth, tst_sbjs_fnm)
 trn_data_pth <- file.path(trn_pth, trn_data_fnm)
 tst_data_pth <- file.path(tst_pth, tst_data_fnm)
 
-
 ## Commonly-used column names.
 join_col <- "activityid"
 acts_col <- "activity"
 sbjs_col <- "subject"
 meas_col <- "measurement"
 mean_col <- "mean"
+
+## Whether to verify summarized means by direct computation from raw data. This
+## is time-consuming, so disabled. Set to "T" to enable.
+sanity_check_computed_means <- F
 
 
 ## Utility functions.
@@ -246,12 +248,9 @@ summary <- merged_data %>%
   ## Generate summary of measurement means, grouped by subject & activity.
   # ".dots = c()" is how to unquote meas/sbjs/acts_col when using group_by.
   group_by(.dots = c(sbjs_col, acts_col, meas_col)) %>%
-  summarize(mean = mean(result))
-## Summarizing has lexically sorted the measurements by measurement name.
-## Here, we unsort to restore the original order.
-cln_sort_ord <- order(cleaned_vars)
-summary_meas_sort_ord <- rep(cln_sort_ord, length.out = nrow(summary))
-summary <- arrange(summary, measurement[summary_meas_sort_ord], .by_group = T)
+  summarize(mean = mean(result)) %>%
+  spread(measurement, mean) %>%
+  setcolorder(c(sbjs_col, acts_col, cleaned_vars))
 
 
 ## Write summary to file.
@@ -268,13 +267,15 @@ number_of_activities <- length(unique_activities)
 number_of_measurement_types <- nrow(original_vars)
 
 ## Sanify check: do means computed in summary match means for original data?
-sanity_check_computed_means <- F
 if(sanity_check_computed_means){
+  message("Running sanity checks on summarized means...")
   for(s in unique_subjects){
+    message("  ...checking for subject ", s, "...")
     for(a in unique_activities){
+      message("    ...checking for activity ", a, "...")
       for(v in cleaned_vars){
         sanity_check <- mean(merged_data[subject == s & activity == a][[v]])
-        actual <- summary[which(summary$subject == s & summary$activity == a & summary$measurement == v),][["mean"]]
+        actual <- summary[which(summary$subject == s & summary$activity == a),][[v]]
         if(actual != sanity_check){
           warning("computed mean mismatch: subject ", s, ", activity ", a, ", variable ", v, ", computed mean ", actual, " != expected ", sanity_check)
         }
@@ -284,9 +285,10 @@ if(sanity_check_computed_means){
 }
 
 
+message("Analysis complete. Generating code book.")
+
 cbf <- file(code_book_fnm)
 open(cbf, "w")
-
 
 cat(file = cbf, "# Code Book -- UCI HAR Dataset Summary\n\n")
 
@@ -300,66 +302,71 @@ for(a in unique_activities){
 }
 cat(file = cbf, "\n")
 
-cat(file = cbf, paste0("`", meas_col, "`: measurement types, of which there are the following ", number_of_measurement_types, ", corresponding to a subset of variables in the original study. See section *Summary choices and study design* below for further details.\n"))
+
+cat(file = cbf, paste0("The following ", number_of_measurement_types, " variables correspond to a subset of variables from the original study. See section *Summary choices and study design* below for further details. ***These variables appear to be unitless***, according the statement \"Features are normalized and bounded within [-1,1]\" in the UCI HAR README (see file *UCI HAR Dataset.zip::UCI HAR Dataset/README.txt*), because normalization results in dimensionless quantities.\n\n"))
+
 for(i in seq_along(cleaned_vars)){
     cat(file = cbf, paste0("- `", cleaned_vars[i], "`: corresponds to `", original_vars[i], "`.\n\n"))
-
-    # Sanity check cleaned variable name matches original.
-    sanity_check <- variableSubs(make.names(original_vars[i]))
-    if(cleaned_vars[i] != sanity_check){
-        warning("measurement name mismatch: ", cleaned_vars[i], " vs ", sanity_check)
-    }
-    sanity_check <- summary[i, "measurement"]
-    if(cleaned_vars[i] != sanity_check){
-        warning("summary order mismatch: ", cleaned_vars[i], " vs ", sanity_check)
-    }
 }
 cat(file = cbf, "\n")
 
-cat(file = cbf, paste0("`", mean_col, "`: the computed mean (numeric) of all study measurements for this combination of subject, activity, and measurement type. Units are the same as those of corresponding variables in the original study. See section *Summary choices and study design* below for further details.\n\n"))
+#cat(file = cbf, paste0("`", mean_col, "`: the computed mean (numeric) of all study measurements for this combination of subject, activity, and measurement type. Units are the same as those of corresponding variables in the original study. See section *Summary choices and study design* below for further details.\n\n"))
 
 cat(file = cbf, "## Summary choices and study design:\n\n")
 
-cat(file = cbf, "The values in the \"mean\" column are averages computed for measurements for each combination of subject, activity, and measurement type. Here, the word \"measurement type\" corresponds to the term \"variable\" used in the raw dataset from the UCI HAR study (see file *UCI HAR Dataset.zip::UCI HAR Dataset/features_info.txt*), and also to the term \"variable\" used in step 5 of the instructions for this project.\n\n")
+#cat(file = cbf, "The values in the \"mean\" column are averages computed for measurements for each combination of subject, activity, and measurement type. Here, the word \"measurement type\" corresponds to the term \"variable\" used in the raw dataset from the UCI HAR study (see file *UCI HAR Dataset.zip::UCI HAR Dataset/features_info.txt*), and also to the term \"variable\" used in step 5 of the instructions for this project.\n\n")
 
-cat(file = cbf, "The summarized measurement types correspond to a subset of the variables in the UCI HAR study. The subset chosen for this summary consists of means and standard deviations for the following signals from the study:\n\n")
-
+cat(file = cbf, "These summarized measurements correspond to a subset of the variables from the UCI HAR study, consisting of means and standard deviations of the following study signals:\n\n")
+#
 cat(file = cbf, "- Time-domain 3-axial signals:\n")
-cat(file = cbf, "    - tBodyAcc-X/Y/Z\n")
-cat(file = cbf, "    - tGravityAcc-X/Y/Z\n")
-cat(file = cbf, "    - tBodyAccJerk-X/Y/Z\n")
-cat(file = cbf, "    - tBodyGyro-X/Y/Z\n")
-cat(file = cbf, "    - tBodyGyroJerk-X/Y/Z\n")
+cat(file = cbf, "    - `tBodyAcc-X/Y/Z`\n")
+cat(file = cbf, "    - `tGravityAcc-X/Y/Z`\n")
+cat(file = cbf, "    - `tBodyAccJerk-X/Y/Z`\n")
+cat(file = cbf, "    - `tBodyGyro-X/Y/Z`\n")
+cat(file = cbf, "    - `tBodyGyroJerk-X/Y/Z`\n")
 cat(file = cbf, "- Frequency-domain 3-axial signals:\n")
-cat(file = cbf, "    - fBodyAcc-X/Y/Z\n")
-cat(file = cbf, "    - fBodyAccJerk-X/Y/Z\n")
-cat(file = cbf, "    - fBodyGyro-X/Y/Z\n")
+cat(file = cbf, "    - `fBodyAcc-X/Y/Z`\n")
+cat(file = cbf, "    - `fBodyAccJerk-X/Y/Z`\n")
+cat(file = cbf, "    - `fBodyGyro-X/Y/Z`\n")
 cat(file = cbf, "- Time-domain magnitude signals:\n")
-cat(file = cbf, "    - tBodyAccMag\n")
-cat(file = cbf, "    - tGravityAccMag\n")
-cat(file = cbf, "    - tBodyAccJerkMag\n")
-cat(file = cbf, "    - tBodyGyroMag\n")
-cat(file = cbf, "    - tBodyGyroJerkMag\n")
+cat(file = cbf, "    - `tBodyAccMag`\n")
+cat(file = cbf, "    - `tGravityAccMag`\n")
+cat(file = cbf, "    - `tBodyAccJerkMag`\n")
+cat(file = cbf, "    - `tBodyGyroMag`\n")
+cat(file = cbf, "    - `tBodyGyroJerkMag`\n")
 cat(file = cbf, "- Frequency-domain magnitude signals:\n")
-cat(file = cbf, "    - fBodyAccMag\n")
-cat(file = cbf, "    - fBodyAccJerkMag\n")
-cat(file = cbf, "    - fBodyGyroMag\n")
-cat(file = cbf, "    - fBodyGyroJerkMag\n")
+cat(file = cbf, "    - `fBodyAccMag`\n")
+cat(file = cbf, "    - `fBodyAccJerkMag`\n")
+cat(file = cbf, "    - `fBodyGyroMag`\n")
+cat(file = cbf, "    - `fBodyGyroJerkMag`\n")
 
 cat(file = cbf, "\n")
 
-cat(file = cbf, "This choice of measurement types to summarize is based on step 2 of the instructions for this project, which reads \"Extracts only the measurements on the mean and standard deviation for each measurement.\" For this project, this instruction is interpreted to mean \"Extract only the estimates of the mean and standard deviation for each signal.\"\n\n")
+cat(file = cbf, "This choice of subset is based on step 2 of this project's instructions, which reads \"Extracts only the measurements on the mean and standard deviation for each measurement.\" This is interpreted to mean \"Extract only the estimates of the mean and standard deviation for each signal.\"\n\n")
 
-cat(file = cbf, "### Possible flaws in analysis:\n\n")
+cat(file = cbf, "### Possible flaws in the design of this analysis:\n\n")
 
-cat(file = cbf, "The means computed in this analysis appear to be, essentially, variably-weighted means of preprocessed signals from the UCI HAR dataset. However, from the instructions given for this project, it appears that *equally*-weighted means are intended.\n\n")
+cat(file = cbf, "- It appears that variably-weighted means are computed in this project, by design, where equally-weighted means were probably the intent of the project's designers.\n")
+cat(file = cbf, "- UCI HAR Dataset computations have not been shadowed for verification in this analysis, and probably should be. This was not done because it would be outside the scope of this project.\n\n")
 
-cat(file = cbf, "For each subject, activity, and variable, it appears that this analysis of means of means, and means of standard deviations, for data drawn from overlapping windows of 128 readings per window (see *UCI HAR Dataset.zip::UCI HAR Dataset/README.txt*). This would mean that in our means:\n\n")
+cat(file = cbf, "#### Variably-weighted means:\n\n")
 
-cat(file = cbf, "- The first 64 readings are represented once, by the first window.\n")
-cat(file = cbf, "- The last 64 readings are represented once, by the last window.\n")
-cat(file = cbf, "- Every other reading is represented twice, by the overlap of adjacent windows.\n")
+cat(file = cbf, "This project appears to compute variably-weighted averages of preprocessed signals from the UCI HAR Dataset. For each subject, activity, and variable, this project computes an average of means, and another of standard deviations, for data drawn from 50%-overlapping windows of 128 readings each (see *UCI HAR Dataset.zip::UCI HAR Dataset/README.txt*). This would imply that for each average:\n\n")
 
+cat(file = cbf, "- The first 64 readings are represented once, in the first half of the first window.\n")
+cat(file = cbf, "- The last 64 readings are represented once, in the last half of the last window.\n")
+cat(file = cbf, "- Every other reading is represented twice, by the overlap of adjacent windows, and thus has twice the weight of the first and last 64 readings.\n\n")
+
+
+cat(file = cbf, "#### Lack of verification of UCI HAR study:\n\n")
+
+cat(file = cbf, "A full analysis should include shadowing the computations of the UCI HAR Dataset for two reasons:\n\n")
+
+cat(file = cbf, "- In order to ensure full understanding of the study's measurement.\n")
+cat(file = cbf, "- In order to ensure that the study's measurements, which are used as this project's raw data, are themselves correct, based on the study's raw data.\n\n")
+
+cat(file = cbf, "This verification is not performed because it would be outside the scope of this project.\n")
 
 close(cbf)
 
+message("Done.")

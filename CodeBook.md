@@ -13,7 +13,8 @@
 - `walkingdownstairs`
 - `walkingupstairs`
 
-`measurement`: measurement types, of which there are the following 66, corresponding to a subset of variables in the original study. See section *Summary choices and study design* below for further details.
+The following 66 variables correspond to a subset of variables from the original study. See section *Summary choices and study design* below for further details. ***These variables appear to be unitless***, according the statement "Features are normalized and bounded within [-1,1]" in the UCI HAR README (see file *UCI HAR Dataset.zip::UCI HAR Dataset/README.txt*), because normalization results in dimensionless quantities.
+
 - `timedombodyaccmeanx`: corresponds to `tBodyAcc-mean()-X`.
 
 - `timedombodyaccmeany`: corresponds to `tBodyAcc-mean()-Y`.
@@ -147,44 +148,52 @@
 - `freqdombodybodygyrojerkmagstddev`: corresponds to `fBodyBodyGyroJerkMag-std()`.
 
 
-`mean`: the computed mean (numeric) of all study measurements for this combination of subject, activity, and measurement type. Units are the same as those of corresponding variables in the original study. See file *README.md* for further details.
-
 ## Summary choices and study design:
 
-The values in the "mean" column are averages computed for measurements for each combination of subject, activity, and measurement type. Here, the word "measurement type" corresponds to the term "variable" used in the raw dataset from the UCI HAR study (see file *UCI HAR Dataset.zip::UCI HAR Dataset/features_info.txt*), and also to the term "variable" used in step 5 of the instructions for this project.
-
-The summarized measurement types correspond to a subset of the variables in the UCI HAR study. The subset chosen for this summary consists of means and standard deviations for the following signals from the study:
+These summarized measurements correspond to a subset of the variables from the UCI HAR study, consisting of means and standard deviations of the following study signals:
 
 - Time-domain 3-axial signals:
-    - tBodyAcc-X/Y/Z
-    - tGravityAcc-X/Y/Z
-    - tBodyAccJerk-X/Y/Z
-    - tBodyGyro-X/Y/Z
-    - tBodyGyroJerk-X/Y/Z
+    - `tBodyAcc-X/Y/Z`
+    - `tGravityAcc-X/Y/Z`
+    - `tBodyAccJerk-X/Y/Z`
+    - `tBodyGyro-X/Y/Z`
+    - `tBodyGyroJerk-X/Y/Z`
 - Frequency-domain 3-axial signals:
-    - fBodyAcc-X/Y/Z
-    - fBodyAccJerk-X/Y/Z
-    - fBodyGyro-X/Y/Z
+    - `fBodyAcc-X/Y/Z`
+    - `fBodyAccJerk-X/Y/Z`
+    - `fBodyGyro-X/Y/Z`
 - Time-domain magnitude signals:
-    - tBodyAccMag
-    - tGravityAccMag
-    - tBodyAccJerkMag
-    - tBodyGyroMag
-    - tBodyGyroJerkMag
+    - `tBodyAccMag`
+    - `tGravityAccMag`
+    - `tBodyAccJerkMag`
+    - `tBodyGyroMag`
+    - `tBodyGyroJerkMag`
 - Frequency-domain magnitude signals:
-    - fBodyAccMag
-    - fBodyAccJerkMag
-    - fBodyGyroMag
-    - fBodyGyroJerkMag
+    - `fBodyAccMag`
+    - `fBodyAccJerkMag`
+    - `fBodyGyroMag`
+    - `fBodyGyroJerkMag`
 
-This choice of measurement types to summarize is based on step 2 of the instructions for this project, which reads "Extracts only the measurements on the mean and standard deviation for each measurement." For this project, this instruction is interpreted to mean "Extract only the estimates of the mean and standard deviation for each signal."
+This choice of subset is based on step 2 of this project's instructions, which reads "Extracts only the measurements on the mean and standard deviation for each measurement." This is interpreted to mean "Extract only the estimates of the mean and standard deviation for each signal."
 
-### Possible flaws in analysis:
+### Possible flaws in the design of this analysis:
 
-The means computed in this analysis appear to be, essentially, variably-weighted means of preprocessed signals from the UCI HAR dataset. However, from the instructions given for this project, it appears that *equally*-weighted means are intended.
+- It appears that variably-weighted means are computed in this project, by design, where equally-weighted means were probably the intent of the project's designers.
+- UCI HAR Dataset computations have not been shadowed for verification in this analysis, and probably should be. This was not done because it would be outside the scope of this project.
 
-For each subject, activity, and variable, it appears that this analysis of means of means, and means of standard deviations, for data drawn from overlapping windows of 128 readings per window (see *UCI HAR Dataset.zip::UCI HAR Dataset/README.txt*). This would mean that in our means:
+#### Variably-weighted means:
 
-- The first 64 readings are represented once, by the first window.
-- The last 64 readings are represented once, by the last window.
-- Every other reading is represented twice, by the overlap of adjacent windows.
+This project appears to compute variably-weighted averages of preprocessed signals from the UCI HAR Dataset. For each subject, activity, and variable, this project computes an average of means, and another of standard deviations, for data drawn from 50%-overlapping windows of 128 readings each (see *UCI HAR Dataset.zip::UCI HAR Dataset/README.txt*). This would imply that for each average:
+
+- The first 64 readings are represented once, in the first half of the first window.
+- The last 64 readings are represented once, in the last half of the last window.
+- Every other reading is represented twice, by the overlap of adjacent windows, and thus has twice the weight of the first and last 64 readings.
+
+#### Lack of verification of UCI HAR study:
+
+A full analysis should include shadowing the computations of the UCI HAR Dataset for two reasons:
+
+- In order to ensure full understanding of the study's measurement.
+- In order to ensure that the study's measurements, which are used as this project's raw data, are themselves correct, based on the study's raw data.
+
+This verification is not performed because it would be outside the scope of this project.
