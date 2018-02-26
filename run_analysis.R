@@ -46,6 +46,8 @@ tst_data_pth <- file.path(tst_pth, tst_data_fnm)
 join_col <- "activityid"
 acts_col <- "activity"
 sbjs_col <- "subject"
+meas_col <- "measurement"
+mean_col <- "mean"
 
 
 ## Utility functions.
@@ -218,10 +220,11 @@ summary <- bind_cols(
   select(-matches(join_col)) %>%
   ## Treat measurement column names as measurement values, and combine into
   ## "measurement" column.
-  gather(key = measurement, value = result, -subject, -activity) %>%
-  ## Generate summary.
-  group_by(subject, activity, measurement) %>%
+  gather(key = !!meas_col, value = result, -!!sbjs_col, -!!acts_col) %>%
+  ## Generate summary of measurement means, grouped by subject & activity.
+  group_by(.dots = c(sbjs_col, acts_col, meas_col)) %>%
   summarize(mean = mean(result))
 
+# Write summary to file.
 message("Writing summary file:\n\t", tidy_data_fnm)
 write.table(summary, tidy_data_fnm, row.name = F)
